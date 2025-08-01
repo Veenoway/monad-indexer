@@ -22,6 +22,14 @@ type MonadTransaction struct {
     TransactionIndex string `json:"transactionIndex"`
 }
 
+type TxInfo struct {
+	Hash  string
+	From  string
+	To    string
+	Value string
+	Gas   string
+}
+
 type JSONRPCRequest struct {
     ID      int           `json:"id"`
     Method  string        `json:"method"`
@@ -41,6 +49,13 @@ type JSONRPCError struct {
     Message string `json:"message"`
 }
 
+type TxData struct {
+    Hash  string
+    From  string
+    To    string
+    Value string
+    Gas   string
+}
 
 func main() {
 
@@ -48,21 +63,12 @@ func main() {
 
 	pwd, _ := os.Getwd()
     fmt.Println("🔍 Répertoire de travail actuel:", pwd)
-
 	if err != nil {
 		fmt.Println("⚠️ Fichier .env non trouvé, utilisation des valeurs par défaut")
 		return
 	}
 	
 	router := gin.Default()
-
-	router.GET("/hello/:name", func(c * gin.Context) {
-		name:= c.Param("name")
-
-		c.JSON(200,gin.H{
-			"message":"Salut " + name + " !",
-		})
-	})
 
 	go listenToBlockEvents()
 
@@ -76,7 +82,6 @@ func main() {
 }
 
 func listenToBlockEvents() {
-
 	url:= os.Getenv("WSS_ENDPOINT")
 	if url == "" {
 		log.Println(".env isn't findable")
@@ -121,21 +126,58 @@ func listenToBlockEvents() {
 		}
 
 		var response map[string]interface{}
-
 		err = json.Unmarshal(messageBytes, &response)
 		if err != nil {
 			log.Println("Error while unmarshaling message byte")
+			return
 		}
+		
+		fmt.Println("response",response)
 
-		if id, exists := response["id"]; exists {
-			if id == 999 {
-				fmt.Println("We got a block here:\n\n %v\n\n%v", response, id)
-			} 
-		} else if result, ok := response["method"]; ok {
-			fmt.Println("Result is a method",result)
-		} else {
-			fmt.Println("Result is a method",result)
+		if method, ok := response["method"].(string); ok && method == "eth_subscription" {
+			params := response["params"].(map[string]interface{})
+			result := params["result"].(map[string]interface{})
+			blockHash := result["hash"].(string)
+
+			fmt.Printf("New block: %v\n",blockHash)
+
+			go handleBlock(ws,blockHash)
 		}
-		fmt.Println("This is the response :\n%v",response)
 	}
+}
+
+func handleBlock(ws *websocket.Conn, blockHash string) {
+
+	blockRequest := JSONRPCRequest{
+		ID: 2,
+		Method: "eth_getBlockByHash",
+		Params: []interface{}{blockHash,true},
+		JSONRPC: "2.0",
+	}
+
+	requestBytes, _ := json.Marshal(blockRequest)
+	ws.WriteMessage(websocket.TextMessage, requestBytes)
+
+	_, messageBytes,err := ws.ReadMessage()
+	if err != nil {
+		log.Println("Error while reading block messages")
+		return
+	}
+
+	var blockResponse map[string]interface{}
+	json.Unmarshal(messageBytes, &blockResponse)
+
+	if blockResult, ok := blockResponse["result"].(map[string]interface{});ok {
+		txs := blockResult["transactions"].([]interface{})
+
+		for _,tx := range txs {
+			txMap := tx.(map[string]interface{})
+			fmt.Println("🔹 Hash:", txMap["hash"])
+			fmt.Println("🔸 From:", txMap["from"])
+			fmt.Println("➡️  To:", txMap["to"])
+			fmt.Println("💰 Value:", txMap["value"])
+			fmt.Println("⛽ Gas:", txMap["gas"])
+		}
+	}
+
 }
