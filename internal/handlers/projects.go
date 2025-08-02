@@ -66,7 +66,6 @@ func CreateProject(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	project.CreatedAt = time.Now()
-
 	_, err := db.Conn.Exec(context.Background(),
 		`INSERT INTO projects (name, creator_id, image, categories, description, created_at) VALUES ($1 $2 $3 $4 $5 $6)`,
 		&project.Name, &project.Image, &project.Categories, &project.Description, &project.CreatedAt,
@@ -76,6 +75,7 @@ func CreateProject(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "DB Error", http.StatusInternalServerError)
 		return
 	}
+	
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"message":"Successfully created a project"})
 }
