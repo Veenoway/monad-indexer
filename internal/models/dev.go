@@ -9,4 +9,7 @@ type Dev struct {
 	Roles []string `json:"roles"`
 	Address string `json:"address"`
 	CreatedAt time.Time `json:"created_at"`
+	Discord string `json:"discord"`
+	Twitter string `json:"twitter"`
+	
 }

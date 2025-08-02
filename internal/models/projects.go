@@ -10,4 +10,6 @@ type Project struct {
 	Categories  []string  `json:"categories"`
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
+	DevID	    string    `json:"dev_id"`
+	MissionID   string    `json:"mission_id"`
 }
