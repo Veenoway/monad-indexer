@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
+	"log"
 	"monad-indexer/internal/db"
-
-	"github.com/gin-gonic/gin"
+	"monad-indexer/internal/routes"
+	"net/http"
 )
 
 
@@ -14,13 +15,10 @@ func main() {
 
 	db.Migrate()
 
-	r := gin.Default()
+	r := routes.SetupRoutes()
 
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "Bakend en GO"})
-	})
-
-	r.Run(":8080")
+	log.Println("Server running on port :8080")
+	http.ListenAndServe(":8080",r)
 }
 
 
