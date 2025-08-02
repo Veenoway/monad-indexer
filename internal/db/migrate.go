@@ -7,23 +7,22 @@ import (
 )
 
 func Migrate() {
-	schema := `
+	// drop := `
+	// DROP TABLE IF EXISTS project_devs CASCADE;
+	// DROP TABLE IF EXISTS projects CASCADE;
+	// DROP TABLE IF EXISTS missions CASCADE;
+	// DROP TABLE IF EXISTS devs CASCADE;
+	// `
+
+	create := `
 	CREATE TABLE IF NOT EXISTS devs (
 		id TEXT PRIMARY KEY,
 		username TEXT NOT NULL,
-		profile_image TEXT,
 		roles TEXT[],
-		address TEXT NOT NULL,
-		created_at TIMESTAMPTZ DEFAULT NOW()
-	);
-
-	CREATE TABLE IF NOT EXISTS projects (
-		id TEXT PRIMARY KEY,
-		creator_id TEXT REFERENCES devs(id),
-		name TEXT NOT NULL,
-		image TEXT,
-		categories TEXT[],
-		description TEXT,
+		profile_image TEXT,
+		address TEXT UNIQUE NOT NULL,
+		twitter TEXT,
+		discord TEXT,
 		created_at TIMESTAMPTZ DEFAULT NOW()
 	);
 
@@ -36,32 +35,34 @@ func Migrate() {
 		created_at TIMESTAMPTZ DEFAULT NOW()
 	);
 
-	CREATE TABLE IF NOT EXISTS mission_projects (
-		id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-		mission_id TEXT REFERENCES missions(id) ON DELETE CASCADE,
-		project_id TEXT REFERENCES projects(id) ON DELETE CASCADE
+	CREATE TABLE IF NOT EXISTS projects (
+		id TEXT PRIMARY KEY,
+		dev_id TEXT REFERENCES devs(id),
+		mission_id TEXT REFERENCES missions(id),
+		name TEXT NOT NULL,
+		image TEXT,
+		categories TEXT[],
+		description TEXT,
+		created_at TIMESTAMPTZ DEFAULT NOW()
 	);
-
-	CREATE TABLE IF NOT EXISTS mission_winners (
+	
+	CREATE TABLE IF NOT EXISTS project_devs (
 		id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-		mission_id TEXT REFERENCES missions(id) ON DELETE CASCADE,
+		project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
 		dev_id TEXT REFERENCES devs(id) ON DELETE CASCADE
-	);
-
-	CREATE TABLE IF NOT EXISTS applications (
-		id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-		mission_id TEXT REFERENCES missions(id) ON DELETE CASCADE,
-		dev_id TEXT REFERENCES devs(id) ON DELETE CASCADE,
-		message TEXT,
-		status TEXT CHECK (status IN ('pending', 'accepted', 'rejected')) DEFAULT 'pending',
-		submitted_at TIMESTAMPTZ DEFAULT NOW()
 	);
 	`
 
-	_, err := Conn.Exec(context.Background(), schema)
+
+	// _, err := Conn.Exec(context.Background(), drop)
+	// if err != nil {
+	// 	log.Fatal("❌ Error dropping tables:", err)
+	// }
+
+	_, err := Conn.Exec(context.Background(), create)
 	if err != nil {
 		log.Fatal("❌ Erreur création des tables :", err)
 	}
 
-	fmt.Println("✅ Tables vérifiées / créées")
+	fmt.Println("✅ Schema dropped and recreated successfully")
 }
