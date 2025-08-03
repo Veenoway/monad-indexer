@@ -16,7 +16,7 @@ func Migrate() {
 
 	create := `
 	CREATE TABLE IF NOT EXISTS devs (
-		id TEXT PRIMARY KEY,
+		id TEXT PRIMARY KEY DEFAULT gen_random_uuid(), 
 		username TEXT NOT NULL,
 		roles TEXT[],
 		profile_image TEXT,
@@ -28,7 +28,7 @@ func Migrate() {
 	);
 
 	CREATE TABLE IF NOT EXISTS missions (
-		id TEXT PRIMARY KEY,
+		id TEXT PRIMARY KEY DEFAULT gen_random_uuid(), 
 		name TEXT NOT NULL,
 		start_time TIMESTAMPTZ,
 		end_time TIMESTAMPTZ,
@@ -38,7 +38,7 @@ func Migrate() {
 	);
 
 	CREATE TABLE IF NOT EXISTS projects (
-		id TEXT PRIMARY KEY,
+		id TEXT PRIMARY KEY DEFAULT gen_random_uuid(), 
 		dev_id TEXT REFERENCES devs(id),
 		mission_id TEXT REFERENCES missions(id),
 		name TEXT NOT NULL,

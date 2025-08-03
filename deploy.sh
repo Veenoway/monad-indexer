@@ -3,6 +3,9 @@
 echo "🔨 Build..."
 GOOS=linux GOARCH=amd64 go build -o monad-server ./cmd/server
 
+echo "🛑 Stop service avant upload..."
+ssh ubuntu@54.38.183.183 "sudo systemctl stop monad-portfolio-dev"
+
 echo "📤 Upload..."
 scp monad-server ubuntu@54.38.183.183:~/
 

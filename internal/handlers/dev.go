@@ -13,26 +13,32 @@ import (
 )
 
 func CreateDev(w http.ResponseWriter, r *http.Request) {
-	var dev models.Dev
-	if err := json.NewDecoder(r.Body).Decode(&dev); err != nil {
-		http.Error(w, "Invalid body", http.StatusBadRequest)
-		return
-	}
+    var dev models.Dev
+    if err := json.NewDecoder(r.Body).Decode(&dev); err != nil {
+        http.Error(w, "Invalid body", http.StatusBadRequest)
+        return
+    }
 
-	dev.CreatedAt = time.Now()
+    dev.CreatedAt = time.Now()
 
-	_, err := db.Conn.Exec(context.Background(), `
-		INSERT INTO devs (id, username, profile_image, roles, address, github, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`,dev.ID, dev.Username, dev.ProfileImage, dev.Roles, dev.Address, dev.Github, dev.CreatedAt)
+    var newID string
+    err := db.Conn.QueryRow(context.Background(), `
+        INSERT INTO devs (username, profile_image, roles, address, discord, twitter, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id
+    `, dev.Username, dev.ProfileImage, dev.Roles, dev.Address, dev.Discord, dev.Twitter, dev.CreatedAt).Scan(&newID)
 
-	if err != nil {
-		http.Error(w, "DB error while inserting", http.StatusInternalServerError)
-		return
-	}
+    if err != nil {
+        http.Error(w, "DB error while inserting", http.StatusInternalServerError)
+        return
+    }
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message":"Successfully created a dev"})
+    // ✅ Retourner l'ID généré
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]string{
+        "message": "Successfully created a dev",
+        "id":      newID,
+    })
 }
 
 func GetAllDevs(w http.ResponseWriter, r *http.Request){

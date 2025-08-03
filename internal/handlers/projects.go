@@ -110,24 +110,30 @@ func GetAllProjects(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateProject(w http.ResponseWriter, r *http.Request) {
-	var project models.Project 
-	if err := json.NewDecoder(r.Body).Decode(&project); err != nil {
-		http.Error(w,"Error while decoding body", http.StatusBadRequest)
-		return
-	}
-	
-	project.CreatedAt = time.Now()
-	_, err := db.Conn.Exec(context.Background(),
-		`INSERT INTO projects (name, creator_id, image, categories, description, created_at) VALUES ($1 $2 $3 $4 $5 $6)`,
-		&project.Name, &project.Image, &project.Categories, &project.Description, &project.CreatedAt,
-	)
+    var project models.Project 
+    if err := json.NewDecoder(r.Body).Decode(&project); err != nil {
+        http.Error(w, "Error while decoding body", http.StatusBadRequest)
+        return
+    }
+    
+    project.CreatedAt = time.Now()
+    
+    var newID string
+    err := db.Conn.QueryRow(context.Background(), `
+        INSERT INTO projects (dev_id, mission_id, name, image, categories, description, created_at) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id
+    `, project.DevID, project.MissionID, project.Name, project.Image, project.Categories, project.Description, project.CreatedAt).Scan(&newID)
 
-	if err != nil {
-		http.Error(w, "DB Error", http.StatusInternalServerError)
-		return
-	}
+    if err != nil {
+        http.Error(w, "DB Error", http.StatusInternalServerError)
+        return
+    }
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message":"Successfully created a project"})
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]string{
+        "message": "Successfully created a project",
+        "id":      newID,
+    })
 }
 
