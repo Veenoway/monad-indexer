@@ -13,7 +13,8 @@ import (
 var Conn *pgx.Conn
 
 func InitDB() {
-	err := godotenv.Load("../../.env")
+	// err := godotenv.Load("../../.env") LOCAL TEST
+	err := godotenv.Load("/home/ubuntu/.env")
 	if err != nil {
 		log.Println("Erreur reading .env file.")
 		return

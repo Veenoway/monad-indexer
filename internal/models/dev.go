@@ -11,5 +11,5 @@ type Dev struct {
 	CreatedAt time.Time `json:"created_at"`
 	Discord string `json:"discord"`
 	Twitter string `json:"twitter"`
-	
+	Github string `json:"github"`
 }

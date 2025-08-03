@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"monad-indexer/internal/db"
 	"monad-indexer/internal/models"
 	"net/http"
@@ -21,9 +22,9 @@ func CreateDev(w http.ResponseWriter, r *http.Request) {
 	dev.CreatedAt = time.Now()
 
 	_, err := db.Conn.Exec(context.Background(), `
-		INSERT INTO devs (id, username, profile_image, roles, address, created_at)
+		INSERT INTO devs (id, username, profile_image, roles, address, github, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
-	`,dev.ID, dev.Username, dev.ProfileImage, dev.Roles, dev.Address, dev.CreatedAt)
+	`,dev.ID, dev.Username, dev.ProfileImage, dev.Roles, dev.Address, dev.Github, dev.CreatedAt)
 
 	if err != nil {
 		http.Error(w, "DB error while inserting", http.StatusInternalServerError)
@@ -41,13 +42,13 @@ func GetAllDevs(w http.ResponseWriter, r *http.Request){
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 
-	query := `SELECT id, username, profile_image, roles, discord, twitter, address, created_at FROM devs WHERE 1=1`
+	query := `SELECT id, username, profile_image, roles, discord, twitter, address, github, created_at FROM devs WHERE 1=1`
 	args := []interface{}{}
 	i := 1
 
 	if search != "" {
 		query += ` AND username ILIKE $` + fmt.Sprint(i)
-		args = append(args, search)
+		args = append(args, "%"+search+"%")
 		i++
 	}
 
@@ -88,16 +89,18 @@ func GetAllDevs(w http.ResponseWriter, r *http.Request){
 	rows,err := db.Conn.Query(context.Background(), query, args...)
 
 	if err != nil {
+		log.Printf("DB error: %v | Query: %s | Args: %v", err, query, args)
 		http.Error(w, "DB error", http.StatusInternalServerError)
 		return
 	}
+	
 	defer rows.Close()
 
 	var devs []models.Dev 
 
 	for rows.Next() {
 		var dev models.Dev
-		rows.Scan(&dev.ID,  &dev.Username, &dev.ProfileImage, &dev.Roles, &dev.Discord, &dev.Twitter, &dev.Address, &dev.CreatedAt)
+		rows.Scan(&dev.ID,  &dev.Username, &dev.ProfileImage, &dev.Roles, &dev.Discord, &dev.Twitter, &dev.Address, &dev.Github, &dev.CreatedAt)
 		devs = append(devs, dev)
 	}
 
@@ -105,7 +108,80 @@ func GetAllDevs(w http.ResponseWriter, r *http.Request){
 	json.NewEncoder(w).Encode(devs)
 }
 
-func GetAllDevProjects(w http.ResponseWriter, r *http.Request) {
+func GetDev(w http.ResponseWriter, r *http.Request){
+	devID := r.URL.Query().Get("dev_id")
+	includeProjects := r.URL.Query().Get("include") == "projects"
+
+	if devID == "" {
+		http.Error(w, "Missing dev_id", http.StatusBadRequest)
+		return
+	}
+
+	var dev models.Dev
+
+	err := db.Conn.QueryRow(context.Background(), 
+		`SELECT id, username, profile_image, roles, discord, twitter, address, github, created_at 
+		FROM devs WHERE id = $1`, devID).Scan(
+		&dev.ID, 
+		&dev.Username, 
+		&dev.ProfileImage, 
+		&dev.Roles, 
+		&dev.Discord, 
+		&dev.Twitter,
+		&dev.Address, 
+		&dev.Github,
+		&dev.CreatedAt,
+	)
+
+	if err != nil {
+        http.Error(w, "Dev not found", http.StatusNotFound)
+        return
+    }
+	if includeProjects {
+		query := `SELECT id, dev_id, mission_id, name, image, categories, description, created_at FROM projects WHERE dev_id = $1`
+		rows, err := db.Conn.Query(context.Background(), query, devID)
+		if err != nil {
+			http.Error(w, "Error fetching projects", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		var projects []models.Project
+		for rows.Next() {
+			var project models.Project
+			err := rows.Scan(
+				&project.ID,
+				&project.DevID,
+				&project.MissionID,
+				&project.Name,
+				&project.Image,
+				&project.Categories,
+				&project.Description,
+				&project.CreatedAt,
+			)
+			if err != nil {
+				http.Error(w, "Error scanning project", http.StatusInternalServerError)
+				return
+			}
+			projects = append(projects, project)
+		}
+
+		response := map[string]interface{}{
+			"dev": dev,
+			"projects": projects,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(dev)
+}
+
+
+
+func GetDevProjects(w http.ResponseWriter, r *http.Request) {
 	devID := r.URL.Query().Get("dev_id")
 	search := r.URL.Query().Get("search")
 

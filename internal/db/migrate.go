@@ -23,6 +23,7 @@ func Migrate() {
 		address TEXT UNIQUE NOT NULL,
 		twitter TEXT,
 		discord TEXT,
+		github TEXT,
 		created_at TIMESTAMPTZ DEFAULT NOW()
 	);
 
@@ -33,6 +34,7 @@ func Migrate() {
 		end_time TIMESTAMPTZ,
 		round INT,
 		created_at TIMESTAMPTZ DEFAULT NOW()
+		
 	);
 
 	CREATE TABLE IF NOT EXISTS projects (
@@ -44,6 +46,17 @@ func Migrate() {
 		categories TEXT[],
 		description TEXT,
 		created_at TIMESTAMPTZ DEFAULT NOW()
+	);
+
+	CREATE TABLE IF NOT EXISTS mission_winners (
+		id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+		mission_id TEXT REFERENCES missions(id) ON DELETE CASCADE,
+		project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+		dev_id TEXT REFERENCES devs(id) ON DELETE CASCADE,
+		position INT DEFAULT 1,  -- 1er, 2ème, 3ème place
+		prize_amount DECIMAL(10,2),
+		awarded_at TIMESTAMPTZ DEFAULT NOW(),
+		UNIQUE(mission_id, project_id)
 	);
 	
 	CREATE TABLE IF NOT EXISTS project_devs (
